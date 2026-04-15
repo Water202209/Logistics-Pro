@@ -19,6 +19,8 @@
                   :fetch-suggestions="querySearch" 
                   placeholder="输入或选择客户" 
                   clearable
+                  trigger-on-focus
+                  style="width: 100%;"
                 ></el-autocomplete>
               </div>
               <div class="form-item">
@@ -138,11 +140,11 @@
                   <el-option 
                     v-for="biz in businessList" 
                     :key="biz.id" 
-                    :label="`${biz.business_no} - ${biz.business_type_name}`" 
+                    :label="[biz.business_no, getBusinessTypeName(biz.business_type, biz.business_type_name)].filter(Boolean).join(' - ')" 
                     :value="biz.business_no"
                   >
                     <span style="float: left">{{ biz.business_no }}</span>
-                    <span style="float: right; color: #8492a6; font-size: 13px">{{ biz.business_type_name }}</span>
+                    <span style="float: right; color: #8492a6; font-size: 13px">{{ getBusinessTypeName(biz.business_type, biz.business_type_name) }}</span>
                   </el-option>
                 </el-select>
               </div>
@@ -268,11 +270,37 @@ const form = reactive({
 
 const customers = ref([])
 
-// 查询客户联想
+const businessTypeMap = {
+  '601': '601-代操作',
+  '602': '602-美国海运 - 美森',
+  '603': '603-美国海运尾程',
+  '604': '604-美国空运',
+  '605': '605-美国空运尾程',
+  '606': '606-日本海运',
+  '607': '607-日本空运',
+  '608': '608-转同行',
+  '609': '609-账单用',
+  '610': '610-美国海运 - 普船',
+  '611': '611-加拿大空海运',
+  '612': '612-东南亚空海运'
+}
+
+const getBusinessTypeName = (type, fallback = '') => {
+  return businessTypeMap[type] || fallback || ''
+}
+
+// 查询客户联想const customers = ref([])
+
+// 客户联想
 const querySearch = (queryString, cb) => {
-  const results = queryString 
-    ? customers.value.filter(c => c.value.toLowerCase().includes(queryString.toLowerCase())) 
-    : customers.value
+  const keyword = (queryString || '').trim().toLowerCase()
+
+  const results = !keyword
+    ? customers.value
+    : customers.value.filter(item =>
+        (item.value || '').toLowerCase().includes(keyword)
+      )
+
   cb(results)
 }
 
@@ -281,7 +309,26 @@ const loadCustomers = async () => {
   try {
     const res = await fetch('http://127.0.0.1:8000/api/customers')
     const data = await res.json()
-    customers.value = Array.isArray(data) ? data.map(c => ({ value: c.customer_name })) : []
+
+    if (Array.isArray(data)) {
+      customers.value = data
+        .map(item => {
+          const name =
+            item.customer_name ||
+            item.company_name ||
+            item.name ||
+            ''
+
+          return {
+            value: String(name).trim()
+          }
+        })
+        .filter(item => item.value)
+    } else {
+      customers.value = []
+    }
+
+    console.log('客户列表加载完成：', customers.value.length)
   } catch (e) {
     console.error('加载客户失败:', e)
     customers.value = []
@@ -393,120 +440,253 @@ onMounted(() => {
       console.error('解析编辑数据失败', e)
     }
   }
+
   loadCustomers()
-  loadBusinessList()  // 加载业务编号列表
+  loadBusinessList()
 })
 </script>
 
 <style scoped>
 .page {
-  animation: fadeIn 0.4s;
+  animation: fadeIn 0.2s ease;
+  padding: 8px 10px;
+  background: #f5f7fa;
+  min-height: 100%;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
+  from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .page-header {
-  margin-bottom: 32px;
-}
-
-.page-header h2 {
-  font-size: 32px;
-  font-weight: 700;
-  color: #1c1c1e;
   margin-bottom: 8px;
 }
 
+.page-header h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2329;
+  margin: 0 0 2px 0;
+  line-height: 1.2;
+}
+
 .page-header p {
-  color: #8E8E93;
-  font-size: 16px;
+  color: #909399;
+  font-size: 12px;
+  margin: 0;
+  line-height: 1.2;
 }
 
 .card {
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(20px);
-  border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: none;
+  border: 1px solid #ebeef5;
   overflow: hidden;
 }
 
 .card-body {
-  padding: 32px;
+  padding: 8px 10px 6px;
 }
 
 .form-section {
-  margin-bottom: 32px;
-  padding-bottom: 28px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #f0f2f5;
 }
 
 .form-section:last-of-type {
+  margin-bottom: 0;
+  padding-bottom: 0;
   border-bottom: none;
 }
 
 .form-section-title {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  color: #007AFF;
-  margin-bottom: 24px;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
+  color: #1677ff;
+  margin-bottom: 6px;
+  line-height: 1.2;
+  display: flex;
+  align-items: center;
 }
 
 .form-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 20px;
-  margin-bottom: 20px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px 10px;
+  margin-bottom: 6px;
+}
+
+.form-row:last-child {
+  margin-bottom: 0;
+}
+
+.form-item {
+  min-width: 0;
 }
 
 .form-item label {
   display: block;
-  margin-bottom: 8px;
-  font-size: 14px;
-  color: #3a3a3c;
+  margin-bottom: 3px;
+  font-size: 12px;
+  color: #303133;
   font-weight: 600;
+  line-height: 1.2;
 }
 
 .form-item .required::before {
   content: '*';
-  color: #FF3B30;
-  margin-right: 4px;
+  color: #f56c6c;
+  margin-right: 3px;
 }
 
 .form-hint {
-  font-size: 11px;
-  color: #FF3B30;
-  margin-left: 5px;
+  font-size: 10px;
+  color: #f56c6c;
+  margin-left: 4px;
 }
 
 .button-group {
   display: flex;
-  gap: 14px;
+  gap: 8px;
   justify-content: flex-end;
-  margin-top: 32px;
-  padding-top: 28px;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f0f2f5;
+}
+
+:deep(.el-form-item) {
+  margin-bottom: 8px !important;
+}
+
+:deep(.el-input),
+:deep(.el-select),
+:deep(.el-autocomplete),
+:deep(.el-input-number),
+:deep(.el-date-editor) {
+  width: 100%;
 }
 
 :deep(.el-input__wrapper),
-:deep(.el-select .el-input__wrapper) {
-  border-radius: 12px;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08) inset;
+:deep(.el-select .el-input__wrapper),
+:deep(.el-date-editor.el-input__wrapper) {
+  min-height: 30px !important;
+  padding: 0 8px !important;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px #dcdfe6 inset !important;
 }
 
-:deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 2px #007AFF inset;
+:deep(.el-input__inner) {
+  font-size: 12px !important;
+  height: 28px;
+  line-height: 28px;
 }
 
-:deep(.el-button--primary) {
-  background: linear-gradient(135deg, #007AFF 0%, #5856D6 100%) !important;
-  border: none !important;
-  border-radius: 12px !important;
-  padding: 12px 32px !important;
+:deep(.el-select .el-input__inner) {
+  height: 28px;
+  line-height: 28px;
+}
+
+:deep(.el-input-number) {
+  width: 100%;
+}
+
+:deep(.el-input-number .el-input__wrapper) {
+  padding-right: 26px !important;
+}
+
+:deep(.el-textarea__inner) {
+  min-height: 52px !important;
+  padding: 6px 8px !important;
+  font-size: 12px !important;
+  line-height: 1.45;
+  border-radius: 4px;
+}
+
+:deep(.el-checkbox) {
+  margin-right: 10px;
+  height: 30px;
+}
+
+:deep(.el-checkbox__label) {
+  font-size: 12px;
+}
+
+:deep(.el-button) {
+  border-radius: 4px !important;
+  padding: 7px 14px !important;
+  font-size: 12px !important;
   font-weight: 600 !important;
+}
+
+:deep(.el-divider) {
+  margin: 8px 0 !important;
+}
+
+.inline-check-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 30px;
+  flex-wrap: wrap;
+}
+
+.remark-compact :deep(.el-textarea__inner) {
+  min-height: 42px !important;
+}
+
+.span-2 {
+  grid-column: span 2;
+}
+
+.span-3 {
+  grid-column: span 3;
+}
+
+.span-4 {
+  grid-column: span 4;
+}
+
+@media (max-width: 1280px) {
+  .form-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .span-4 {
+    grid-column: span 3;
+  }
+}
+
+@media (max-width: 900px) {
+  .form-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .span-3,
+  .span-4 {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 6px;
+  }
+
+  .card-body {
+    padding: 8px 8px 6px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .span-2,
+  .span-3,
+  .span-4 {
+    grid-column: span 1;
+  }
 }
 </style>

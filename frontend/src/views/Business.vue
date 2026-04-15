@@ -12,7 +12,7 @@
       <div class="card-body">
         <!-- 搜索栏 -->
         <div class="search-bar">
-          <el-input v-model="bizSearch.business_no" placeholder="业务编号" clearable prefix-icon="Search"></el-input>
+          <el-input v-model="bizSearch.business_no" placeholder="业务编号（支持模糊/多值）" clearable prefix-icon="Search"></el-input>
           <el-input v-model="bizSearch.container_no" placeholder="集装箱号" clearable></el-input>
           <el-input v-model="bizSearch.bill_no" placeholder="提单号" clearable></el-input>
           <el-select v-model="bizSearch.business_type" placeholder="业务类型" clearable>
@@ -36,9 +36,9 @@
         <el-table :data="businessList" stripe v-loading="bizLoading" height="500">
           <el-table-column prop="id" label="ID" width="60"></el-table-column>
           <el-table-column prop="business_no" label="业务编号" width="180" sortable></el-table-column>
-          <el-table-column prop="business_type_name" label="业务类型" width="160">
+          <el-table-column label="业务类型" width="160">
             <template #default="scope">
-              <el-tag type="info" size="small">{{ scope.row.business_type_name }}</el-tag>
+              <el-tag type="info" size="small">{{ getBusinessTypeName(scope.row.business_type, scope.row.business_type_name) }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="container_no" label="集装箱号" width="140"></el-table-column>
@@ -136,19 +136,23 @@ const bizForm = reactive({
   generated_no: '' 
 })
 
-const typeMap = { 
-  '602': '美国海运 - 美森', 
-  '601': '代操作', 
-  '610': '美国海运 - 普船', 
-  '604': '美国空运', 
-  '611': '加拿大空海运', 
-  '612': '东南亚空海运', 
-  '606': '日本海运', 
-  '607': '日本空运', 
-  '603': '美国海运尾程', 
-  '605': '美国空运尾程', 
-  '608': '转同行', 
-  '609': '账单用' 
+const typeMap = {
+  '601': '601-代操作',
+  '602': '602-美国海运 - 美森',
+  '603': '603-美国海运尾程',
+  '604': '604-美国空运',
+  '605': '605-美国空运尾程',
+  '606': '606-日本海运',
+  '607': '607-日本空运',
+  '608': '608-转同行',
+  '609': '609-账单用',
+  '610': '610-美国海运 - 普船',
+  '611': '611-加拿大空海运',
+  '612': '612-东南亚空海运'
+}
+
+const getBusinessTypeName = (type, fallback = '') => {
+  return typeMap[type] || fallback || type || '-'
 }
 
 // 加载业务列表
